@@ -7,6 +7,7 @@ from helpers import prepare_dataset_nli, prepare_train_dataset_qa, \
     prepare_validation_dataset_qa, QuestionAnsweringTrainer, compute_accuracy
 import os
 import json
+import wandb
 
 NUM_PREPROCESSING_WORKERS = 2
 
@@ -76,6 +77,20 @@ def main():
         eval_split = 'validation_matched' if dataset_id == ('glue', 'mnli') else 'validation'
         # Load the raw data
         dataset = datasets.load_dataset(*dataset_id)
+
+    run = wandb.init(
+        # Set the wandb entity where your project will be logged (generally your team name).
+        entity="evancarr-university-of-texas-at-austin",
+        # Set the wandb project where this run will be logged.
+        project="AI388-NLP - Dateset Artifacts",
+        # Track hyperparameters and run metadata.
+        config={
+            "architecture": "google/electra-small-discriminator",
+            "dataset": dataset_id,
+            "epochs": 3 if training_args.do_train else 0,
+            "seed": training_args.seed
+        },
+    )
     
     # NLI models need to have the output label count specified (label 0 is "entailed", 1 is "neutral", and 2 is "contradiction")
     task_kwargs = {'num_labels': 3} if args.task == 'nli' else {}
@@ -182,7 +197,7 @@ def main():
 
     if training_args.do_eval:
         results = trainer.evaluate(**eval_kwargs)
-
+        run.log(results)
         # To add custom metrics, you should replace the "compute_metrics" function (see comments above).
         #
         # If you want to change how predictions are computed, you should subclass Trainer and override the "prediction_step"
