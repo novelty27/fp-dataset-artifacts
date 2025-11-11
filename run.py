@@ -1,3 +1,4 @@
+import torch, random, numpy as np
 import datasets
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, \
     AutoModelForQuestionAnswering, Trainer, TrainingArguments, HfArgumentParser
@@ -50,6 +51,9 @@ def main():
 
     training_args, args = argp.parse_args_into_dataclasses()
 
+    torch.manual_seed(training_args.seed)
+    np.random.seed(training_args.seed)
+    random.seed(training_args.seed)
     # Dataset selection
     # IMPORTANT: this code path allows you to load custom datasets different from the standard SQuAD or SNLI ones.
     # You need to format the dataset appropriately. For SNLI, you can prepare a file with each line containing one
@@ -64,10 +68,11 @@ def main():
         # from the loaded dataset
         eval_split = 'train'
     else:
-        default_datasets = {'qa': ('squad',), 'nli': ('snli',)}
-        dataset_id = tuple(args.dataset.split(':')) if args.dataset is not None else \
-            default_datasets[args.task]
+        # default_datasets = {'qa': ('squad',), 'nli': ('snli',), 'mnli':('glue','multi_nli')}
+        # dataset_id = tuple(args.dataset.split(':')) if args.dataset is not None else \
+        #     default_datasets[args.task]
         # MNLI has two validation splits (one with matched domains and one with mismatched domains). Most datasets just have one "validation" split
+        dataset_id = ('glue', 'mnli') if args.dataset == 'mnli' else args.dataset
         eval_split = 'validation_matched' if dataset_id == ('glue', 'mnli') else 'validation'
         # Load the raw data
         dataset = datasets.load_dataset(*dataset_id)
@@ -103,7 +108,7 @@ def main():
     if dataset_id == ('snli',):
         # remove SNLI examples with no label
         dataset = dataset.filter(lambda ex: ex['label'] != -1)
-    
+
     train_dataset = None
     eval_dataset = None
     train_dataset_featurized = None
