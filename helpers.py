@@ -10,16 +10,24 @@ QA_MAX_ANSWER_LENGTH = 30
 
 
 # This function preprocesses an NLI dataset, tokenizing premises and hypotheses.
-def prepare_dataset_nli(examples, tokenizer, max_seq_length=None):
+def prepare_dataset_nli(examples, tokenizer, max_seq_length=None, hypothesis_only=False):
     max_seq_length = tokenizer.model_max_length if max_seq_length is None else max_seq_length
 
-    tokenized_examples = tokenizer(
-        examples['premise'],
-        examples['hypothesis'],
-        truncation=True,
-        max_length=max_seq_length,
-        padding='max_length'
-    )
+    if hypothesis_only:
+        tokenized_examples = tokenizer(
+            examples['hypothesis'],
+            truncation=True,
+            max_length=max_seq_length,
+            padding='max_length'
+        )
+    else:
+        tokenized_examples = tokenizer(
+            examples['premise'],
+            examples['hypothesis'],
+            truncation=True,
+            max_length=max_seq_length,
+            padding='max_length'
+        ) 
 
     tokenized_examples['label'] = examples['label']
     return tokenized_examples
