@@ -22,8 +22,29 @@ class CustomArgs:
     max_train_samples: int = field(default=None)
     max_eval_samples: int = field(default=None)
     hypothesis_only: bool = field(default=False)
-    hypothesis_only: bool = field(default=False)
+    dataset_weights: str = field(default=None)
 
+class WeightedTrainer(Trainer):
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None, **kwargs):
+        labels = inputs.pop("labels")
+        weights = inputs.pop("weights", None)
+
+        outputs = model(**inputs)
+        logits = outputs.logits
+
+        loss_function = torch.nn.CrossEntropyLoss(reduction="none")
+        per_example_loss = loss_function(logits.view(-1, self.model.config.num_labels),
+                                        labels.view(-1))
+
+        # apply weights
+        if weights is not None:
+            weights = weights.to(per_example_loss.device).view(-1)
+            loss = (per_example_loss * weights).sum() / weights.sum()
+        else:
+            loss = per_example_loss.mean()
+
+        return (loss, outputs) if return_outputs else loss
+    
 def main():
     argp = HfArgumentParser((TrainingArguments, CustomArgs))
 
@@ -58,6 +79,11 @@ def main():
         eval_split = 'validation_matched' if dataset_id == 'multi_nli' else 'validation'
         # Load the raw data
         dataset = datasets.load_dataset(dataset_id)
+
+    dataset_weights = None
+    if args.dataset_weights is not None:
+        with open(args.dataset_weights, "r") as f:
+            dataset_weights = json.load(f)
     
     # NLI models need to have the output label count specified (label 0 is "entailed", 1 is "neutral", and 2 is "contradiction")
     task_kwargs = {'num_labels': 3} if args.task == 'nli' else {}
@@ -81,7 +107,7 @@ def main():
         prepare_eval_dataset = lambda exs: prepare_validation_dataset_qa(exs, tokenizer)
     elif args.task == 'nli':
         prepare_train_dataset = prepare_eval_dataset = \
-            lambda exs: prepare_dataset_nli(exs, tokenizer, args.max_length, args.hypothesis_only)
+            lambda exs: prepare_dataset_nli(exs, tokenizer, args.max_length, args.hypothesis_only, weights=dataset_weights)
         # prepare_eval_dataset = prepare_dataset_nli
     else:
         raise ValueError('Unrecognized task name: {}'.format(args.task))
@@ -104,7 +130,8 @@ def main():
             prepare_train_dataset,
             batched=True,
             num_proc=NUM_PREPROCESSING_WORKERS,
-            remove_columns=train_dataset.column_names
+            remove_columns=train_dataset.column_names,
+            load_from_cache_file=False
         )
     if training_args.do_eval:
         eval_dataset = dataset[eval_split]
@@ -118,7 +145,10 @@ def main():
         )
 
     # Select the training configuration
-    trainer_class = Trainer
+    if args.dataset_weights is not None:
+        trainer_class = WeightedTrainer
+    else:
+        trainer_class = Trainer
     eval_kwargs = {}
     # If you want to use custom metrics, you should define your own "compute_metrics" function.
     # For an example of a valid compute_metrics function, see compute_accuracy in helpers.py.
@@ -162,7 +192,7 @@ def main():
         config={
             "architecture": "google/electra-small-discriminator",
             "dataset": dataset_id,
-            "epochs": 3 if training_args.do_train else 0,
+            "epochs": training_args.num_train_epochs if training_args.do_train else 0,
             "seed": training_args.seed
         },
     )

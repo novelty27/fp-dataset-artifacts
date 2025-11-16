@@ -5,12 +5,13 @@ from transformers import Trainer, EvalPrediction
 from transformers.trainer_utils import PredictionOutput
 from typing import Tuple
 from tqdm.auto import tqdm
+import json
 
 QA_MAX_ANSWER_LENGTH = 30
 
 
 # This function preprocesses an NLI dataset, tokenizing premises and hypotheses.
-def prepare_dataset_nli(examples, tokenizer, max_seq_length=None, hypothesis_only=False):
+def prepare_dataset_nli(examples, tokenizer, max_seq_length=None, hypothesis_only=False, weights=None):
     max_seq_length = tokenizer.model_max_length if max_seq_length is None else max_seq_length
 
     if hypothesis_only:
@@ -30,6 +31,14 @@ def prepare_dataset_nli(examples, tokenizer, max_seq_length=None, hypothesis_onl
         ) 
 
     tokenized_examples['label'] = examples['label']
+
+    # If weights file path is present, pull in the data from that path.
+    # Assign a weight to a given example based on the example's pairID
+    if weights is not None:
+        pair_ids = examples['pairID']
+        tokenized_examples['weights'] = [
+            weights.get(pair_id, 1.0) for pair_id in pair_ids
+        ]
     return tokenized_examples
 
 
