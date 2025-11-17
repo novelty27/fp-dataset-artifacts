@@ -42,7 +42,6 @@ class WeightedTrainer(Trainer):
             loss = (per_example_loss * weights).sum() / weights.sum()
         else:
             loss = per_example_loss.mean()
-
         return (loss, outputs) if return_outputs else loss
     
 def main():
@@ -53,6 +52,7 @@ def main():
     training_args, args = argp.parse_args_into_dataclasses()
     output_dir = current_time + '-' + training_args.output_dir + '-' + str(training_args.seed)
     training_args.output_dir = output_dir
+    training_args.remove_unused_columns=False
 
     torch.manual_seed(training_args.seed)
     np.random.seed(training_args.seed)
@@ -141,7 +141,8 @@ def main():
             prepare_eval_dataset,
             batched=True,
             num_proc=NUM_PREPROCESSING_WORKERS,
-            remove_columns=eval_dataset.column_names
+            remove_columns=eval_dataset.column_names,
+            load_from_cache_file=False
         )
 
     # Select the training configuration
