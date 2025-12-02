@@ -41,8 +41,8 @@ def main():
     # Prepare the model
     task_kwargs = {'num_labels': 3}
     model_class = AutoModelForSequenceClassification
-    model = AutoModelForSequenceClassification.from_pretrained(training_args.resume_from_checkpoint)
-    tokenizer = AutoTokenizer.from_pretrained(training_args.resume_from_checkpoint)
+    model = AutoModelForSequenceClassification.from_pretrained(args.model)
+    tokenizer = AutoTokenizer.from_pretrained(args.model)
 
     # Make tensor contiguous if needed https://github.com/huggingface/transformers/issues/28293
     if hasattr(model, 'electra'):
