@@ -53,10 +53,10 @@ def main():
     # Prepare the dataset 
     if not args.eval_on_train:
         print("This file is used to generate weights on a training set. Pass in `--eval_on_train True")
-        return 
+    #     return 
     
     dataset_id = args.dataset
-    eval_split = 'train' if args.eval_on_train else 'validitaion'
+    eval_split = 'train' if args.eval_on_train else 'validation_matched'
     dataset = datasets.load_dataset(dataset_id)
     
     prepared_dataset = lambda exs: prepare_dataset_nli(exs, tokenizer, args.max_length, hypothesis_only=True)

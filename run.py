@@ -52,6 +52,7 @@ def main():
     training_args, args = argp.parse_args_into_dataclasses()
     output_dir = current_time + '-' + training_args.output_dir + '-' + str(training_args.seed)
     training_args.output_dir = output_dir
+    training_args.save_total_limit=1
     training_args.remove_unused_columns=False
 
     torch.manual_seed(training_args.seed)
